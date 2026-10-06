@@ -1,0 +1,95 @@
+{
+  "method_region": "Train once on non-holdout pool (11661 cells), evaluate identical model separately on each of the 7 holdout oblasts (never seen in training). Compared to within-region random-split variance (10 seeds of 80/20 split restricted to the same non-holdout pool -- no domain shift).",
+  "per_oblast": [
+    {
+      "oblast": "Ivano-Frankivsk",
+      "n": 654,
+      "n_pos": 59,
+      "auc": 0.9725964962256088,
+      "ap": 0.6708856897055451
+    },
+    {
+      "oblast": "Zakarpattia",
+      "n": 612,
+      "n_pos": 46,
+      "auc": 0.966469503764019,
+      "ap": 0.6628510824232815
+    },
+    {
+      "oblast": "Ternopil",
+      "n": 342,
+      "n_pos": 45,
+      "auc": 0.9155256266367376,
+      "ap": 0.5944139311815364
+    },
+    {
+      "oblast": "Rivne",
+      "n": 289,
+      "n_pos": 24,
+      "auc": 0.9669811320754718,
+      "ap": 0.5609280352372701
+    },
+    {
+      "oblast": "Chernivtsi",
+      "n": 241,
+      "n_pos": 6,
+      "auc": 0.9858156028368794,
+      "ap": 0.6361111111111111
+    },
+    {
+      "oblast": "Khmelnytskyi",
+      "n": 451,
+      "n_pos": 37,
+      "auc": 0.9629194411803107,
+      "ap": 0.6204479659212427
+    },
+    {
+      "oblast": "Sumy",
+      "n": 420,
+      "n_pos": 3,
+      "auc": 0.9936051159072742,
+      "ap": 0.45833333333333326
+    }
+  ],
+  "within_region_random_split_baseline": {
+    "auc_mean": 0.9809754945379392,
+    "auc_std": 0.0032131416120701195,
+    "ap_mean": 0.6422613815308806,
+    "ap_std": 0.051599684024461696,
+    "n_seeds": 10
+  },
+  "between_oblast_domain_shift": {
+    "auc_mean": 0.9662732740894716,
+    "auc_std": 0.02502008131611867,
+    "auc_min": 0.9155256266367376,
+    "auc_max": 0.9936051159072742,
+    "ap_mean": 0.6005673069876172,
+    "ap_std": 0.07339639569032659,
+    "ap_min": 0.45833333333333326,
+    "ap_max": 0.6708856897055451,
+    "n_oblasts_with_valid_metric": 7
+  },
+  "std_ratio_domain_shift_over_random_split": 7.786796953527071,
+  "caveat_small_n": "Chernivtsi (n_pos=6) and Sumy (n_pos=3) have too few positives for a stable AUC/AP estimate; their extreme scores (0.986 and 0.994 AUC respectively) are likely noise from a tiny positive count, not genuinely easier terrain. Ternopil (n_pos=45, the largest holdout positive count besides Ivano-Frankivsk/Zakarpattia) gives the most reliable low-end estimate (AUC=0.916), and it alone already falls outside the within-region random-split range, which is the more defensible way to read this figure than trusting every bar.",
+  "method_season": "For each of the 597 positive cells, assigned season-of-first-detection (spring=Mar-May, summer=Jun-Aug, autumn=Sep-Nov) from the earliest heracleum_ua_clean.parquet eventDate month at that cell (via target_points_clustered key->cell_id join). Compared the out-of-fold random-split-model (scheme a from Step 1) predicted suitability distribution across season groups, plus KS tests on raw environmental features (bio_01, bio_12, dist_road_m, n_plant_effort_r5km, elevation_m).",
+  "season_counts": {
+    "spring": 97,
+    "summer": 390,
+    "autumn": 90,
+    "winter": 3,
+    "unknown_no_month": 17
+  },
+  "season_oof_pred_kruskal": {
+    "H": 31.340152001421757,
+    "p_value": 1.5652094521043667e-07
+  },
+  "season_feature_shift_ks_pvalues": {
+    "bio_01_tmean": 0.0188,
+    "bio_12_precip": 0.0332,
+    "dist_road_m": 0.0605,
+    "n_plant_effort_r5km": 0.0004,
+    "elevation_m": 2e-09
+  },
+  "season_interpretation": "Positive cells first detected in spring sit at systematically lower predicted suitability (median oof_pred=0.83) than summer/autumn detections (median 0.91/0.97), and the underlying covariates differ significantly by season too -- spring detections occur at lower elevation and higher 5km plant-effort density (median 228 vs 110), consistent with spring fieldwork concentrating on accessible lowland sites before the growing season peaks, while summer/autumn records (when Heracleum sosnowskyi is visually conspicuous -- 2+ m tall, flowering) capture a wider and higher-suitability range including more remote sites. This is a survey-timing artifact overlaid on the model, not evidence that the species genuinely prefers summer/autumn habitat, and it would be invisible to any within-region split that does not stratify by observation season.",
+  "key_finding": "A random 80/20 split confined to the same non-holdout geography shows AUC std=0.0032 across 10 seeds; moving to genuinely new geography (leave-one-oblast-out among the 7 holdout oblasts) inflates that spread to std=0.0250, about 8x larger, with the lowest-reliability oblast (Ternopil, n_pos=45) scoring AUC=0.916 -- below the entire within-region random-split range [0.975, 0.987]. No random or spatial-block CV confined to a single training geography can surface this."
+}

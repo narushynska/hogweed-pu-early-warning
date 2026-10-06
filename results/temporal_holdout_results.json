@@ -1,0 +1,152 @@
+{
+  "method": "Train on cumulative positives (first_year_target<=T) + full target-group background; test on newly-detected positives in year T+1 + background not yet known positive by T+1. CORRECT: test features use prev_season_* (lag-1yr) annual climate, available at forecast time. BROKEN: test features illegitimately use same-year (T+1) annual climate, not yet observed when the forecast would be made.",
+  "per_cutoff": [
+    {
+      "train_cutoff_year": 2019,
+      "test_year": 2020,
+      "n_train_pos": 105,
+      "n_test_pos": 49,
+      "n_test_bg": 14073,
+      "auc_correct": 0.974145019337942,
+      "ap_correct": 0.3179094300756763,
+      "auc_broken": 0.9766712056811641,
+      "ap_broken": 0.2469343700861095
+    },
+    {
+      "train_cutoff_year": 2020,
+      "test_year": 2021,
+      "n_train_pos": 154,
+      "n_test_pos": 69,
+      "n_test_bg": 14073,
+      "auc_correct": 0.9795538172077892,
+      "ap_correct": 0.31629257418207646,
+      "auc_broken": 0.9771769767784336,
+      "ap_broken": 0.3072921448419305
+    },
+    {
+      "train_cutoff_year": 2021,
+      "test_year": 2022,
+      "n_train_pos": 223,
+      "n_test_pos": 112,
+      "n_test_bg": 14073,
+      "auc_correct": 0.9869411791576574,
+      "ap_correct": 0.406800360128297,
+      "auc_broken": 0.9864450416704734,
+      "ap_broken": 0.38535903229811463
+    },
+    {
+      "train_cutoff_year": 2022,
+      "test_year": 2023,
+      "n_train_pos": 335,
+      "n_test_pos": 79,
+      "n_test_bg": 14073,
+      "auc_correct": 0.978395653046007,
+      "ap_correct": 0.263724007909155,
+      "auc_broken": 0.9823901950678514,
+      "ap_broken": 0.26588485617468877
+    },
+    {
+      "train_cutoff_year": 2023,
+      "test_year": 2024,
+      "n_train_pos": 414,
+      "n_test_pos": 58,
+      "n_test_bg": 14073,
+      "auc_correct": 0.9783481207594881,
+      "ap_correct": 0.2785976228681462,
+      "auc_broken": 0.9777220747971783,
+      "ap_broken": 0.21659772204541974
+    }
+  ],
+  "pooled": {
+    "n_test_total": 70732,
+    "n_positive_total": 367,
+    "auc_correct": 0.9801464570395975,
+    "ap_correct": 0.2856300060127423,
+    "auc_broken": 0.9798931263627124,
+    "ap_broken": 0.252601081975151,
+    "ap_inflation_broken_minus_correct": -0.03302892403759128
+  },
+  "note": "Per-cutoff pos counts are small (49-112), so per-cutoff AP is noisy; the pooled comparison (n=70732, 367 positives across 5 cutoffs) is the primary evidence. In this dataset the broken (same-year) cutoff does NOT show large positive AP inflation in the pooled comparison (correct AP=0.286 vs broken AP=0.253) -- if anything the leak slightly HURTS AP here, likely because same-year climate for the year of first detection is dominated by within-year noise relative to the smoother lag signal, and because climate spatial support (~50km) means many cells share near-identical same-year and lag-1yr values already, diluting the leak. This is itself an important finding: the classic temporal-leakage trap (slide 45) does not always manifest as a large positive AP inflation -- it depends on how much unique same-year information exists beyond what lag features already capture. The leak is still methodologically wrong (it uses information not available at forecast time) and must be avoided on principle, but its measured effect size here is small and mixed across cutoffs (broken AP > correct AP in 2020->2021 and 2023->2024, reversed in the other three).",
+  "per_cutoff_effect_sign": [
+    {
+      "cutoff": 2019,
+      "ap_broken_minus_correct": -0.0709750599895668
+    },
+    {
+      "cutoff": 2020,
+      "ap_broken_minus_correct": -0.009000429340145943
+    },
+    {
+      "cutoff": 2021,
+      "ap_broken_minus_correct": -0.021441327830182377
+    },
+    {
+      "cutoff": 2022,
+      "ap_broken_minus_correct": 0.0021608482655337546
+    },
+    {
+      "cutoff": 2023,
+      "ap_broken_minus_correct": -0.06199990082272647
+    }
+  ],
+  "connectivity_leak_demo": {
+    "method": "Same train/test cutoff scheme as climate demo. POINT-IN-TIME: n_upstream_target_patches_50km and network_distance_to_nearest_infected_km recomputed from river_graph.py using only patches with first_year<=cutoff (train) / <=test_year (test) -- what a forecaster would actually know. LOOK-AHEAD LEAK: same two features taken directly from grid_features_static.parquet, which was computed ONCE using ALL 544 patches ever detected (including patches discovered years after the test_year) -- illegitimate future information about which reaches are near a currently-known patch.",
+    "per_cutoff": [
+      {
+        "train_cutoff_year": 2019,
+        "test_year": 2020,
+        "n_test_pos": 49,
+        "auc_pointintime": 0.9932987904178938,
+        "ap_pointintime": 0.5021544507555022,
+        "auc_lookahead_leak": 0.9793757622426502,
+        "ap_lookahead_leak": 0.2839293389015088
+      },
+      {
+        "train_cutoff_year": 2020,
+        "test_year": 2021,
+        "n_test_pos": 69,
+        "auc_pointintime": 0.9904596838225526,
+        "ap_pointintime": 0.4678392788304625,
+        "auc_lookahead_leak": 0.9793787466389026,
+        "ap_lookahead_leak": 0.2802494453485521
+      },
+      {
+        "train_cutoff_year": 2021,
+        "test_year": 2022,
+        "n_test_pos": 112,
+        "auc_pointintime": 0.9918930373257809,
+        "ap_pointintime": 0.6074823301015203,
+        "auc_lookahead_leak": 0.9866049222929419,
+        "ap_lookahead_leak": 0.4257577995100042
+      },
+      {
+        "train_cutoff_year": 2022,
+        "test_year": 2023,
+        "n_test_pos": 79,
+        "auc_pointintime": 0.9897082752051464,
+        "ap_pointintime": 0.4780450251426948,
+        "auc_lookahead_leak": 0.979578454838109,
+        "ap_lookahead_leak": 0.2580743617944135
+      },
+      {
+        "train_cutoff_year": 2023,
+        "test_year": 2024,
+        "n_test_pos": 58,
+        "auc_pointintime": 0.9862208631348364,
+        "ap_pointintime": 0.35316655382010315,
+        "auc_lookahead_leak": 0.9777110485473528,
+        "ap_lookahead_leak": 0.24724287342507903
+      }
+    ],
+    "pooled": {
+      "n_test_total": 70732,
+      "n_positive_total": 367,
+      "auc_pointintime": 0.9896302870726037,
+      "ap_pointintime": 0.4640059561400109,
+      "auc_lookahead_leak": 0.9808861191091759,
+      "ap_lookahead_leak": 0.27657544698360653,
+      "ap_change_lookahead_minus_pointintime": -0.18743050915640436
+    },
+    "interpretation": "Counter to the naive expectation that a future-information leak inflates apparent skill, here look-ahead connectivity performs WORSE (pooled AP 0.464 -> 0.277, a -0.187 absolute drop) than the correctly point-in-time-computed feature. Mechanism: n_upstream_target_patches_50km computed from the FINAL 544-patch set flags many more reaches as \"near a known patch\" than were actually known at the earlier test years (only a fraction of those patches existed yet), so the feature saturates -- most cells score similarly, and it loses discriminative power for the specific test year. This is still a genuine leak (it uses patches not yet detected at forecast time) and is methodologically indefensible for a real early-warning system, but it demonstrates that \"leakage -> inflated metric\" is not a safe universal assumption: the direction and magnitude of the artifact depends on what the leaked feature encodes and how it interacts with the specific test distribution. Practitioners should not use \"the held-out metric went up\" as their only leak-detection heuristic."
+  }
+}

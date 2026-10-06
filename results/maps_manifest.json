@@ -1,0 +1,60 @@
+{
+ "project": "Heracleum sosnowskyi UA — Phase V мапи (branch 2/2, cartographic materials)",
+ "rasterization_method": "imshow on row/col pivot array from grid_1km_ua.parquet (regular 1km EPSG:3035 grid), NOT scatter — avoids moire artifacts on 599126-point regular grid.",
+ "moire_check_method": "Two-stage check per raster map: (1) render-then-verify bbox overlap check on all text objects (fig.canvas.get_renderer + get_window_extent); (2) zoomed crop inspection (cropped visual inspection) of a sub-region for banding/striping/graininess. For map_spread_risk, an initial log-floor at 1e-9 produced a visible horizontal striping artifact in the Dnipropetrovsk/Zaporizhzhia region traced to floating-point underflow in the propagule_pressure KDE tail (<1e-9, values as low as 1e-39-1e-12) rather than genuine signal; the floor was validated by comparing near_term_risk value distributions at multiple threshold cutoffs (1e-9 removes numerical noise while retaining 58% of cells with non-degenerate signal) and re-rendering — striping absent in the final version.",
+ "maps": [
+  {
+   "file": "map_observations.png",
+   "title": "Спостереження Heracleum spp. в Україні (GBIF)",
+   "sources": [],
+   "spatial_resolution": "point observations, no gridding",
+   "limitations": "GBIF occurrence coverage reflects observer effort, not species density; hard_negative label covers native look-alikes (H. sphondylium/sibiricum, Pastinaca, Angelica)."
+  },
+  {
+   "file": "map_patches_dynamics.png",
+   "title": "Осередки борщівника + динаміка 2018–2026",
+   "sources": [],
+   "spatial_resolution": "DBSCAN eps=500m clusters",
+   "limitations": "Only 78/544 (14%) patches have defined boundary; proportional symbols used because true polygon area (0.008-1.1 km2) is sub-pixel at national map scale. growth_rate/transition counts confounded 72-94% by observation effort, not real biological growth; centroid shift (median 342m) is below clustering eps and direction is not statistically derivable from these data (Rayleigh test does not reject uniformity, p=0.07-0.34)."
+  },
+  {
+   "file": "map_suitability.png",
+   "title": "Habitat suitability (PU-model, target-group background)",
+   "sources": [],
+   "spatial_resolution": "1km grid, native model resolution",
+   "limitations": "Percentile-rank color scale used because raw score distribution is extremely right-skewed (median 0.0006, max 1.0). Headline validated performance AP=0.58-0.61 (spatial-block/leave-region-out), NOT the inflated random-split AP=0.67. Domain shift across oblasts is 7.8x larger than within-region AUC variance."
+  },
+  {
+   "file": "map_spread_risk.png",
+   "title": "Near-term spread risk",
+   "sources": [],
+   "spatial_resolution": "1km grid",
+   "limitations": "Log10 scale with floor at 1e-9 (values below this are floating-point underflow noise in the propagule-pressure KDE tail, confirmed by component decomposition, not real signal). connectivity_road component relies on Natural Earth roads covering only ~19% of true road length — treat as a lower bound / biased proxy for road-mediated dispersal, not a full accessibility layer."
+  },
+  {
+   "file": "map_uncertainty_actions.png",
+   "title": "Категорії дії (abstention policy): NO_ACTION / DIRECT_PRIORITY / EXPERT_REVIEW",
+   "sources": [
+    "suitability_predictions.parquet",
+    "grid_features_static.parquet (n_plant_effort_r25km)"
+   ],
+   "spatial_resolution": "1km grid",
+   "limitations": "Per-cell category reconstructed from documented policy thresholds (high_suitability_threshold=0.9880, low_evidence_density_cutoff=75 on n_plant_effort_r25km), since abstention_results.json stores only aggregate counts, not a per-cell layer; reconstructed counts (NO_ACTION 597570, DIRECT_PRIORITY 1165, EXPERT_REVIEW 391) match the manifest's category_counts (597570 / 1162 / 394) to within 3 cells (the small residual is attributable to the 3 env-OOD flagged cells not separately recomputed here, per manifest's own both_flags=0 breakdown). EXPERT_REVIEW reflects an observation-effort gap, not genuine model uncertainty — ensemble_std/Mahalanobis distance were rejected as independent uncertainty axes: ensemble_std vs suitability rho=+0.95 (near-deterministic function of the mean prediction, reflects background-choice sensitivity not calibrated confidence), Mahalanobis-distance vs suitability rho=-0.62 (largely redundant with the suitability score itself)."
+  },
+  {
+   "file": "map_field_batch.png",
+   "title": "Обраний польовий батч (n=500) + черга експертного розгляду (n=394)",
+   "sources": [
+    "field_batch_500.csv",
+    "expert_review_queue.csv",
+    "suitability_predictions.parquet"
+   ],
+   "spatial_resolution": "point selections on 1km grid background",
+   "limitations": "Field batch and expert review queue produced by the parallel 'Польовий батч' branch; consumed as delivered, not recomputed. Threshold for batch inclusion is raw suitability score 0.988 (rank-500 in 7-oblast spatial holdout), not an F1-optimum threshold; precision@500 is low (0.018, enrichment x9.3 over base rate) reflecting genuine PU-detection difficulty at this budget."
+  }
+ ],
+ "field_batch_dependency": {
+  "status": "complete",
+  "detail": "field_batch_500.csv and expert_review_queue.csv were both available in the artifact store at execution time (parallel branch completed before this branch reached map 6); map_field_batch.png was built from the actual delivered files, no synthetic/placeholder data used."
+ }
+}

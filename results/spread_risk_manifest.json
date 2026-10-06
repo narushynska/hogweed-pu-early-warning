@@ -1,0 +1,59 @@
+{
+  "phase": "III — Spread risk (branch 2 of 2, parallel to Habitat suitability branch)",
+  "step1_near_term_risk_decomposition": {
+    "formula": "near_term_risk = normalize01( suitability_proxy * propagule_pressure * (0.5*connectivity_river + 0.5*connectivity_road) )",
+    "suitability_proxy": {
+      "method": "TEMPORARY climate-only proxy: Mahalanobis distance in standardized climate-feature space (bio_01,04,05,06,12,15,16,17 + GDD/frost/precip/tmean 10yr means + elevation) from each cell to the empirical covariance/mean of known positive cells (n=597), transformed as exp(-mahalanobis/median_mahalanobis_at_positives) and min-max normalized to [0,1].",
+      "TODO": "Replace with suitability_predictions.parquet column suitability_targetbg once the Habitat suitability branch delivers it.",
+      "validation": "Mean suitability_proxy at known positive cells = 0.53 vs 0.27 grid-wide mean — proxy discriminates in the expected direction."
+    },
+    "propagule_pressure": {
+      "method": "Gaussian KDE (sklearn KernelDensity) over patch centroids (n=544 patches from patches.parquet), weighted by log1p(n_points) per patch to dampen pure-effort inflation of huge point clusters. Bandwidth selected via 5-fold CV log-likelihood grid search over 2-100km — optimum at 20 km (same order of magnitude as the climate spatial support of ~50km and consistent with the KDE literature default for regional invasive-spread kernels).",
+      "bandwidth_km": 20.0,
+      "validation": "Mean propagule_pressure at known positive cells = 0.29 vs 0.03 grid-wide mean."
+    },
+    "connectivity_river": {
+      "formula": "0.6*exp(-network_distance_to_nearest_infected_km/50) + 0.4*(1-exp(-n_upstream_target_patches_50km/3)), then min-max normalized",
+      "note": "Sparse: network_distance is only defined for the ~45k cells assigned to a reach within the river_upstream_cache lookup; NaN treated as 0 contribution from the distance-decay term.",
+      "validation": "Mean at positive cells = 0.84 vs 0.03 grid-wide mean — strongly discriminative but concentrated near rivers."
+    },
+    "connectivity_road": {
+      "formula": "exp(-dist_road_m/median_dist_road_m), min-max normalized. median_dist_road_m=7684",
+      "caveat": "dist_road is measured to Natural Earth major roads (~19% of real road length) and correlates with observer effort (Spearman rho vs n_plant_effort_r5km = -0.142, measured previously) — this connectivity layer is confounded with detection probability, not just physical accessibility for propagule transport (vehicles/mowing equipment).",
+      "validation": "Mean at positive cells = 0.66 vs 0.41 grid-wide mean."
+    },
+    "risk_vs_suitability_spearman_corr": 0.8188232556988152
+  },
+  "step2_river_connectivity_validation": {
+    "n_sampled": 2000,
+    "spearman_corr_network_vs_euclidean": 0.905222764522357,
+    "median_ratio_network_over_euclidean": 1.397932575246915,
+    "median_diff_km": 8.6098174540931,
+    "finding": "On a random sample of n=2000 cells with valid cached network distance, network (river-graph) distance to the nearest infected reach correlates strongly with straight-line Euclidean distance to the nearest infected patch (Spearman ρ=0.905), but is systematically LARGER (median network/Euclidean ratio=1.40, median difference +8.6 km) because rivers follow winding paths rather than straight lines. Divergence increases with distance and is most pronounced for low Strahler-order (small, winding) tributary reaches; for cells very close to a river with a nearby infected reach the two measures nearly coincide. This confirms the network-distance feature carries real additional geometric information beyond straight-line distance and is not redundant with it."
+  },
+  "step3_wind_dispersal_kernel": {
+    "kernel_formula": "kernel(dist_m, bearing_deg) = exp(-dist_m/20000) * (1 + wind_constancy * wind_resultant_mag_normalized * cos(radians(bearing - downwind_direction)))",
+    "downwind_direction": "wind_resultant_dir + 180 (met convention: wind_resultant_dir is FROM direction; +180 gives the TO/downwind direction)",
+    "distance_scale_m": 20000.0,
+    "wind_mag_normalization": "wind_resultant_mag clipped to grid-wide p99 (3.37) then divided by that p99",
+    "aggregation": "score(cell) = sum over all 544 patch sources of kernel(dist, bearing), each source's wind attributes taken from its nearest 1km grid cell",
+    "isotropy_note": "Because median wind_constancy across Ukraine (Jul-Sep) is only 0.269, the anisotropy multiplier (1 + constancy*mag_norm*cos(...)) stays close to 1 at the median (ranging roughly 0.84-1.16), i.e. the kernel is intentionally near-isotropic with a modest directional tilt, per instructions — NOT a narrow directional cone.",
+    "validation_split": "20% oblast-block holdout (own split, see wind_model_comparison.json for oblast list)",
+    "models_compared": "see wind_model_comparison.json — (1) ML-only spatial/climate/effort features, (2) pure mechanistic kernel (1D logistic-calibrated), (3) hybrid ML+mechanistic-feature"
+  },
+  "step4_directionality_test": {
+    "method": "Rayleigh test for circular uniformity on azimuths from nearest prior-year positive-patch centroid to each new-patch centroid (patch_dynamics.parquet, status=='new')",
+    "see": "directionality_test_results.json for full numeric results",
+    "headline": "None of the Rayleigh tests reject the null hypothesis of uniform circular direction at alpha=0.05 (full sample p=0.072, n=503; <20km subsample p=0.335, n=288; <5km subsample p=0.229, n=125; azimuth-vs-downwind alignment test p=0.068, n=457). This is an EXPECTED negative result, not a modeling failure: as previously established, the median centroid shift between matched patches across years (342 m) is smaller than the DBSCAN clustering epsilon (500 m) used to define patches — so most 'new' patch events are very likely re-detections / cluster-boundary noise from varying observation effort and clustering granularity rather than genuine spatial spread events. Any apparent directional pattern in the raw azimuth histogram is not statistically distinguishable from random. We do NOT claim wind-driven or river-driven directional spread is disproven by this — only that it is NOT detectable from the current patch-dynamics dataset at its current spatial/temporal resolution."
+  },
+  "known_limitations_carried_forward": [
+    "PU setting: zero verified_negative cells exist; ctrl_target_group_bg and ctrl_random_bg are two separate pseudo-control pools, kept distinct throughout (used ctrl_random_bg as the primary negative pool for model validation here).",
+    "dist_road_m (and hence connectivity_road) correlates with observation effort about as strongly as with climate — treated as a confounded accessibility proxy, not a clean causal connectivity signal.",
+    "Road network source (Natural Earth) captures only ~19% of real road length in Ukraine.",
+    "River network distance is only defined for ~45k of 599k cells (those with a valid nearest_reach/upstream-cache match) — connectivity_river is necessarily sparse/near-zero elsewhere.",
+    "patch_dynamics 'new' events are dominated by detection/clustering noise: median inter-year centroid shift (342m) is below the DBSCAN eps (500m) used to define patches, so the directionality test result should be read as 'not detectable', not 'absent'.",
+    "growth_rate/patch dynamics generally confound with observation effort at 72-94% (measured in Phase II) — not re-litigated here but relevant context for interpreting new-patch counts.",
+    "Suitability proxy is a stand-in for the parallel Habitat-suitability branch's model; near_term_risk should be recomputed once suitability_predictions.parquet is available.",
+    "Wind climatology spatial support is ~50km (NASA POWER grid), coarser than the 1km analysis grid — patch-level wind attributes are the nearest-cell value, not a local reading."
+  ]
+}

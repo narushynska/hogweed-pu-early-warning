@@ -1,0 +1,241 @@
+{
+  "spatial_holdout_oblasts": [
+    "Ivano-Frankivsk",
+    "Zakarpattia",
+    "Ternopil",
+    "Rivne",
+    "Chernivtsi",
+    "Khmelnytskyi",
+    "Sumy"
+  ],
+  "n_holdout_cells": 113204,
+  "n_holdout_positive": 220,
+  "permutation_importance_top20": {
+    "network_distance_to_nearest_infected_km": 0.44465,
+    "dist_river_m": 0.02319,
+    "n_apiaceae_bg_r1km": 0.02244,
+    "has_upstream_infection_50km": 0.01939,
+    "n_apiaceae_bg_r5km": 0.01844,
+    "n_plant_effort_r5km": 0.01554,
+    "n_hard_negative_r1km": 0.01118,
+    "n_plant_effort_r1km": 0.01037,
+    "tpi_m": 0.00515,
+    "n_apiaceae_bg_r10km": 0.00421,
+    "dist_railroad_m": 0.00419,
+    "n_plant_effort_r10km": 0.00386,
+    "frost_days_spring_mean_2015_2024": 0.0027,
+    "dist_road_m": 0.00264,
+    "elevation_m": 0.00242,
+    "bio_05": 0.0023,
+    "tmean_spring_mean_2015_2024": 0.00222,
+    "et0_annual_std_2015_2024": 0.0021,
+    "bio_01": 0.00198,
+    "bio_03": 0.00192
+  },
+  "shap_mean_abs_top20": {
+    "network_distance_to_nearest_infected_km": 1.6209,
+    "has_upstream_infection_50km": 0.52152,
+    "n_apiaceae_bg_r1km": 0.33884,
+    "bio_12": 0.24726,
+    "dist_river_m": 0.21097,
+    "n_plant_effort_r1km": 0.19953,
+    "elevation_m": 0.19086,
+    "n_apiaceae_bg_r5km": 0.1759,
+    "bio_02": 0.17291,
+    "n_hard_negative_r1km": 0.15551,
+    "dist_railroad_m": 0.15479,
+    "n_plant_effort_r5km": 0.11882,
+    "bio_15": 0.11657,
+    "n_apiaceae_bg_r10km": 0.10828,
+    "tpi_m": 0.10498,
+    "dist_road_m": 0.09115,
+    "n_upstream_target_patches_50km": 0.08415,
+    "wind_resultant_mag": 0.08284,
+    "bio_06": 0.08184,
+    "wind_constancy": 0.07915
+  },
+  "ablation": {
+    "full_model": {
+      "AUC": 0.9679,
+      "AP": 0.6053,
+      "n_features": 73
+    },
+    "no_effort_and_dist_road": {
+      "AUC": 0.9634,
+      "AP": 0.5649,
+      "n_features": 60,
+      "features_removed": [
+        "dist_road_m",
+        "n_apiaceae_bg_r10km",
+        "n_apiaceae_bg_r1km",
+        "n_apiaceae_bg_r25km",
+        "n_apiaceae_bg_r5km",
+        "n_hard_negative_r10km",
+        "n_hard_negative_r1km",
+        "n_hard_negative_r25km",
+        "n_hard_negative_r5km",
+        "n_plant_effort_r10km",
+        "n_plant_effort_r1km",
+        "n_plant_effort_r25km",
+        "n_plant_effort_r5km"
+      ]
+    },
+    "no_river_connectivity": {
+      "AUC": 0.7149,
+      "AP": 0.1401,
+      "n_features": 69,
+      "features_removed": [
+        "n_upstream_target_patches_50km",
+        "network_distance_to_nearest_infected_km",
+        "has_upstream_infection_50km",
+        "ord_stra"
+      ]
+    },
+    "no_effort_no_river_connectivity": {
+      "AUC": 0.6752,
+      "AP": 0.1344,
+      "n_features": 56
+    },
+    "ap_loss_from_removing_effort_dist_road": 0.0404,
+    "ap_loss_pct_from_removing_effort_dist_road": 6.67,
+    "ap_loss_from_removing_river_connectivity": 0.4652,
+    "ap_loss_pct_from_removing_river_connectivity": 76.86,
+    "isolation_of_ord_stra": {
+      "no_3_named_connectivity_feats_keep_ord_stra": {
+        "AUC": 0.7005,
+        "AP": 0.1445
+      },
+      "no_ord_stra_only": {
+        "AUC": 0.969,
+        "AP": 0.608
+      },
+      "conclusion": "ord_stra alone contributes negligibly (AP 0.605->0.608, i.e. no drop) versus removing the other 3 named connectivity features alone (AP 0.605->0.145) -- the ~77% AP loss reported for the 4-feature 'no_river_connectivity' group is attributable to the 3 named features, not to ord_stra."
+    }
+  },
+  "dist_road_shap_stratification_quintile": [
+    {
+      "quintile": "q1_near",
+      "n": 602,
+      "mean_shap": 0.0894,
+      "median_dist": 767.7023,
+      "median_effort": 72.5
+    },
+    {
+      "quintile": "q2",
+      "n": 602,
+      "mean_shap": -0.0109,
+      "median_dist": 3199.5059,
+      "median_effort": 56.0
+    },
+    {
+      "quintile": "q3",
+      "n": 601,
+      "mean_shap": -0.083,
+      "median_dist": 7941.5063,
+      "median_effort": 49.0
+    },
+    {
+      "quintile": "q4",
+      "n": 602,
+      "mean_shap": -0.0793,
+      "median_dist": 14590.8999,
+      "median_effort": 61.5
+    },
+    {
+      "quintile": "q5_far",
+      "n": 602,
+      "mean_shap": 0.1006,
+      "median_dist": 23823.6787,
+      "median_effort": 98.0
+    }
+  ],
+  "dist_road_shap_vs_effort_spearman": {
+    "vs_n_plant_effort_r5km": {
+      "rho": 0.0529,
+      "p": 0.003698057107434251
+    },
+    "vs_n_apiaceae_bg_r5km": {
+      "rho": 0.0086,
+      "p": 0.6385667431858002
+    },
+    "vs_n_plant_effort_r10km": {
+      "rho": 0.0032,
+      "p": 0.8601341563231493
+    }
+  },
+  "admin_boundary_artifact_check": {
+    "method": "presence rate within dist_road_m octile bins, variance across oblasts (>=20 obs per oblast per bin)",
+    "per_bin": [
+      {
+        "bin": "(0.138, 743.93]",
+        "n_oblasts": 20,
+        "rate_std": 0.0864,
+        "rate_mean": 0.0547,
+        "rate_range": 0.28
+      },
+      {
+        "bin": "(743.93, 1669.981]",
+        "n_oblasts": 19,
+        "rate_std": 0.075,
+        "rate_mean": 0.0505,
+        "rate_range": 0.2289
+      },
+      {
+        "bin": "(1669.981, 2908.336]",
+        "n_oblasts": 20,
+        "rate_std": 0.054,
+        "rate_mean": 0.0376,
+        "rate_range": 0.2029
+      },
+      {
+        "bin": "(2908.336, 4745.917]",
+        "n_oblasts": 20,
+        "rate_std": 0.0372,
+        "rate_mean": 0.0231,
+        "rate_range": 0.1356
+      },
+      {
+        "bin": "(4745.917, 7016.453]",
+        "n_oblasts": 20,
+        "rate_std": 0.0339,
+        "rate_mean": 0.0193,
+        "rate_range": 0.0952
+      },
+      {
+        "bin": "(7016.453, 10067.49]",
+        "n_oblasts": 19,
+        "rate_std": 0.0542,
+        "rate_mean": 0.0211,
+        "rate_range": 0.2083
+      },
+      {
+        "bin": "(10067.49, 14997.624]",
+        "n_oblasts": 18,
+        "rate_std": 0.025,
+        "rate_mean": 0.0107,
+        "rate_range": 0.0959
+      },
+      {
+        "bin": "(14997.624, 54406.887]",
+        "n_oblasts": 17,
+        "rate_std": 0.0493,
+        "rate_mean": 0.0224,
+        "rate_range": 0.1731
+      }
+    ],
+    "max_within_bin_oblast_range": 0.28,
+    "conclusion": "presence rate range across oblasts within a fixed road-distance bin reaches 0.28 (absolute), well above smooth-gradient expectation -- interpreted as survey-effort heterogeneity across oblasts, not a biological signal, and this heterogeneity is not visible in the national-average GAM PDP curves"
+  },
+  "what_this_audit_confirms": [
+    "Effort/access features contribute a measurable but modest share of holdout AP (~6.6% relative loss when removed).",
+    "River-connectivity-to-known-patch features are the single largest contributor to holdout AP (~77% relative loss when the 4-feature group -- n_upstream_target_patches_50km, network_distance_to_nearest_infected_km, has_upstream_infection_50km, and ord_stra -- is removed together); an isolation test confirms this drop is attributable to the 3 named connectivity features specifically, since ord_stra removed alone changes AP by less than +0.003, and these 3 mix real riverine spread with detection history.",
+    "dist_road_m's SHAP contribution is non-monotonic with distance and weakly-but-significantly correlated with 5km plant-effort counts, consistent with it being a mixed accessibility/biology signal rather than a pure remoteness covariate.",
+    "Oblast-to-oblast presence-rate heterogeneity persists even after conditioning on road-distance, indicating a real spatial confound the model's smooth splines and marginal SHAP averages do not fully expose."
+  ],
+  "what_this_audit_does_not_prove": [
+    "It does not prove dist_road_m or the effort buffers carry zero biological signal -- correlations are moderate (|rho|<0.15), not total collinearity.",
+    "It does not establish the TRUE ecological range of the species, only what is separable from pseudo-background under the two PU formulations tested.",
+    "It does not replace a full spatial block cross-validation; this is a single 7-oblast train/holdout diagnostic split, done for this branch only.",
+    "It cannot attribute the river-connectivity effect to biology vs detection-history in isolation -- both plausibly contribute and the data do not allow separating them."
+  ]
+}

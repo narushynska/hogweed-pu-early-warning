@@ -1,0 +1,64 @@
+{
+  "test1_reporting_volume_echo": {
+    "description": "Permutation and bootstrap test of whether within-patch area growth is statistically indistinguishable from a pure record-count echo",
+    "n_matched_pairs": 102,
+    "observed_slope": 0.9159568992642183,
+    "observed_r2": 0.722893736796529,
+    "observed_p_linregress": 1.2647852526327157e-29,
+    "permutation_null_r2_mean": 0.009872036328503307,
+    "permutation_null_r2_95pct": 0.03745075726529353,
+    "permutation_null_r2_99pct": 0.064861136132068,
+    "permutation_null_r2_max": 0.18452758252153137,
+    "observed_r2_percentile_in_null": 100.0,
+    "slope_bootstrap_ci95": [
+      0.7998671000084219,
+      1.05604718993254
+    ],
+    "slope_ci_excludes_zero": true,
+    "slope_ci_includes_one": true,
+    "n_permutations": 10000,
+    "n_bootstrap": 5000
+  },
+  "test2_moran_growth_residual": {
+    "description": "Moran's I spatial autocorrelation on raw vs effort-corrected patch growth residuals, KNN k=6 weights",
+    "n_patches": 102,
+    "moran_I_raw": -0.10478396117911093,
+    "moran_p_raw": 0.0101,
+    "moran_I_effort_corrected": -0.051810013354546644,
+    "moran_p_effort_corrected": 0.2043,
+    "moran_z_effort_corrected": -0.8524098663000278,
+    "n_permutations": 9999,
+    "weights": "KNN k=6, row-standardized"
+  },
+  "test3_new_patch_proximity_null": {
+    "description": "Median nearest-neighbor distance from newly detected patches to point-in-time baseline (already-known) patches, vs a spatially-uniform-on-landmass null",
+    "periods": {
+      "2019-2021": {
+        "n_baseline": 83,
+        "n_new": 133,
+        "obs_median_km": 13.670672112711115,
+        "null_median_mean_km": 93.40973699568762,
+        "null_median_p05_km": 70.19748268026254,
+        "p_value": 0.0
+      },
+      "2022-2023": {
+        "n_baseline": 202,
+        "n_new": 181,
+        "obs_median_km": 12.599799224958836,
+        "null_median_mean_km": 70.95676019035041,
+        "null_median_p05_km": 57.02727493360752,
+        "p_value": 0.0
+      },
+      "2024-2026": {
+        "n_baseline": 373,
+        "n_new": 189,
+        "obs_median_km": 4.196357365636912,
+        "null_median_mean_km": 69.38160477031123,
+        "null_median_p05_km": 55.62320730335187,
+        "p_value": 0.0
+      }
+    },
+    "n_null_draws": 2000,
+    "null_source": "uniform random sample of Ukraine's 1km land grid cells (599,126 candidates)"
+  }
+}

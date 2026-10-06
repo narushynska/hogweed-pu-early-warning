@@ -1,0 +1,170 @@
+{
+  "branch": "Phase IV \u2014 Validation (LvivDS 2026 lecture case, Heracleum sosnowskyi in Ukraine)",
+  "purpose": "Honest-validation block: compare CV schemes, temporal holdout with leakage demo, domain shift across regions and seasons, budget-aware metrics with calibration, and uncertainty/abstention policy -- all on the identical PU-LightGBM target-group-background configuration used by the Phase III suitability model (149->73 features, hyperparameters and background choice reproduced from suitability_manifest.json).",
+  "model_config_reused": {
+    "algorithm": "LightGBM LGBMClassifier, n_estimators=400, learning_rate=0.03, num_leaves=15, min_child_samples=15, subsample=0.8, colsample_bytree=0.8, reg_lambda=1.0, random_state=42",
+    "pu_setup": "presence (n=597) vs ctrl_target_group_bg (n=14073), scale_pos_weight=n_bg/n_pos per split",
+    "feature_list_source": "suitability_manifest.json feature_list (73 features for the static analyses in Steps 1/3/4/5); a 45-feature time-invariant subset (STATIC_SITE_FEATS_T, dropping the 10-yr climate mean/std columns) plus point-in-time annual climate columns for Step 2 (temporal).",
+    "note": "Model was RETRAINED with this identical configuration for every CV scheme/split rather than unpickling pu_model_targetbg.pkl, per task instruction (LightGBM retraining is fast and keeps lineage transparent); AUC/AP for scheme (d) leave-region-out (0.968/0.613) closely reproduce the original suitability_manifest.json numbers (0.968/0.605), confirming retraining fidelity."
+  },
+  "step1_validation_schemes": {
+    "summary": [
+      {
+        "scheme": "a_random_split",
+        "auc_mean": 0.9816063405824142,
+        "auc_std": 0.0019694273202371868,
+        "ap_mean": 0.6711932331266988,
+        "ap_std": 0.042261211638110155,
+        "n_test_mean": 2934,
+        "n_pos_test_mean": 119
+      },
+      {
+        "scheme": "b_group_by_patch",
+        "auc_mean": 0.980374031687149,
+        "auc_std": 0.002471490975973955,
+        "ap_mean": 0.6483290794860623,
+        "ap_std": 0.039294202015054555,
+        "n_test_mean": 2934,
+        "n_pos_test_mean": 118
+      },
+      {
+        "scheme": "c_spatial_block_buffered",
+        "auc_mean": 0.9742538289787733,
+        "auc_std": 0.011676072714783993,
+        "ap_mean": 0.582972030908443,
+        "ap_std": 0.06392326426399024,
+        "n_test_mean": 3112,
+        "n_pos_test_mean": 147
+      },
+      {
+        "scheme": "d_leave_region_out_7oblast",
+        "auc_mean": 0.9678591218748981,
+        "auc_std": 0.0,
+        "ap_mean": 0.6128314731816997,
+        "ap_std": 0.0,
+        "n_test_mean": 3009,
+        "n_pos_test_mean": 220
+      }
+    ],
+    "spatial_block_design": {
+      "autocorrelation_estimation": "Moran's I on bio_01 (tmean) over a 4000-cell national sample at radii 10-200km shows I stays high (>0.68) even at 200km, consistent with the known ~50km MERRA-2 climate support documented in prior phases; an empirical semivariogram on random-split-model residuals (scheme a, OOF) shows a shallow local minimum near 35-65km before rising again (non-stationary/nested structure, not a single clean range).",
+      "block_size_chosen_km": 100,
+      "buffer_km": 50,
+      "rationale": "Block size set to 2x the ~50km climate spatial-support radius documented in prior phases, with an additional 50km dead-zone buffer stripped from the training side of the boundary -- deliberately conservative given the variogram did not show one sharp range."
+    },
+    "gap_random_vs_leave_region_out": {
+      "auc_gap": 0.013747218707516162,
+      "ap_gap": 0.058361759944999037,
+      "ap_relative_inflation_pct": 9.523296778802226
+    },
+    "gap_random_vs_spatial_block": {
+      "auc_gap": 0.007352511603640921,
+      "ap_gap": 0.0882212022182558
+    },
+    "key_finding": "Naive random 80/20 split overestimates AP by ~0.06-0.09 absolute (9-15% relative) compared to spatial-block or leave-region-out schemes on this identical model; group-by-patch alone (removing only within-patch duplication) barely moves the estimate, confirming spatial autocorrelation across DIFFERENT patches -- not just within-patch duplication -- is the dominant source of the leak."
+  },
+  "step2_temporal_holdout": {
+    "summary": "See temporal_holdout_results.json for full detail.",
+    "climate_lag_demo_pooled": {
+      "n_test_total": 70732,
+      "n_positive_total": 367,
+      "auc_correct": 0.9801464570395975,
+      "ap_correct": 0.2856300060127423,
+      "auc_broken": 0.9798931263627124,
+      "ap_broken": 0.252601081975151,
+      "ap_inflation_broken_minus_correct": -0.03302892403759128
+    },
+    "connectivity_leak_demo_pooled": {
+      "n_test_total": 70732,
+      "n_positive_total": 367,
+      "auc_pointintime": 0.9896302870726037,
+      "ap_pointintime": 0.4640059561400109,
+      "auc_lookahead_leak": 0.9808861191091759,
+      "ap_lookahead_leak": 0.27657544698360653,
+      "ap_change_lookahead_minus_pointintime": -0.18743050915640436
+    },
+    "key_finding": "The classic \"future information inflates the metric\" pattern (slide 45) does NOT hold uniformly here: the same-year-climate leak has a small, sign-mixed effect (pooled AP 0.286->0.253, i.e. leak DECREASES AP slightly), while the river-connectivity look-ahead leak also DECREASES AP (0.464->0.277) because the feature saturates when computed from the full 544-patch final state. Both leaks are still methodologically indefensible for a real forecasting system (they use information not available at prediction time), but this dataset demonstrates that a leak's effect on a held-out metric can go either direction -- \"the number went up so something is leaking\" is not a reliable universal heuristic; the only reliable test is auditing feature provenance against the forecast timestamp directly."
+  },
+  "step3_domain_shift": {
+    "summary": "See domain_shift_results.json for full detail.",
+    "region_shift": {
+      "auc_mean": 0.9662732740894716,
+      "auc_std": 0.02502008131611867,
+      "auc_min": 0.9155256266367376,
+      "auc_max": 0.9936051159072742,
+      "ap_mean": 0.6005673069876172,
+      "ap_std": 0.07339639569032659,
+      "ap_min": 0.45833333333333326,
+      "ap_max": 0.6708856897055451,
+      "n_oblasts_with_valid_metric": 7
+    },
+    "within_region_baseline": {
+      "auc_mean": 0.9809754945379392,
+      "auc_std": 0.0032131416120701195,
+      "ap_mean": 0.6422613815308806,
+      "ap_std": 0.051599684024461696,
+      "n_seeds": 10
+    },
+    "std_ratio": 7.786796953527071,
+    "season_shift": {
+      "kruskal_H": 31.340152001421757,
+      "kruskal_p": 1.5652094521043667e-07,
+      "median_oof_pred_by_season": {
+        "spring": 0.834,
+        "summer": 0.915,
+        "autumn": 0.968
+      }
+    },
+    "key_finding": "Genuine domain shift across 7 held-out oblasts is ~8x larger (AUC std=0.025) than the variance from randomly resampling within the SAME training geography (AUC std=0.0032); Ternopil (n_pos=45) alone scores AUC=0.916, below the entire within-region random-split range. Season-of-detection is a real domain-shift axis too: spring-detected positives sit at systematically lower predicted suitability, tracing back to lower elevation and higher local survey effort in spring fieldwork rather than a real biological difference."
+  },
+  "step4_budget_metrics": {
+    "summary": "See budget_metrics_results.json for full detail.",
+    "precision_at_k": {
+      "K200": {
+        "precision": 0.01,
+        "recall": 0.00909090909090909,
+        "n_found": 2,
+        "n_positive_total": 220
+      },
+      "K500": {
+        "precision": 0.018,
+        "recall": 0.04090909090909091,
+        "n_found": 9,
+        "n_positive_total": 220
+      }
+    },
+    "accuracy_trap": {
+      "trivial_accuracy": 0.9980566057736475,
+      "precision_at_500": 0.018
+    },
+    "chosen_threshold": {
+      "method": "Threshold set at the RAW suitability score of the 500th-ranked holdout cell (budget = 500 field visits per season, a parameter the user supplies, not derived from any F1/Youden optimum).",
+      "threshold_raw_score": 0.9880356683038164,
+      "n_cells_above_threshold_nationally": 1556,
+      "pct_of_national_grid_above_threshold": 0.2597116466319272,
+      "rationale": "Maximizing F1 or another accuracy-style statistic is meaningless under 0.19% prevalence and PU labels with zero verified negatives (F1 optimum is driven almost entirely by the arbitrary unknown-as-negative assumption). The only threshold that has an operational meaning here is one tied to the field service's actual visit capacity: rank all cells by predicted suitability and take exactly as many as the service can survey in a season. This makes the threshold a property of the BUDGET (500 in this run), not of the model -- doubling next season's budget to 1000 should widen the threshold rather than re-fit or re-tune the model."
+    },
+    "key_finding": "At 0.19% holdout prevalence, a do-nothing classifier scores 99.8% accuracy while precision@500 (the field-relevant metric) is only 1.8% -- but that 1.8% is a ~9x ENRICHMENT over random visits, which is the number that matters operationally, not the raw percentage. Operating threshold was set by the field service's stated visit capacity (500/season), not by F1/Youden optimization, because F1 under PU labels with zero verified negatives has no defensible optimum. A secondary finding: the Elkan-Noto calibrated score saturates to exactly 1.0 for 2.5% of holdout cells (more than K=200), so top-K ranking must use the uncalibrated raw score to avoid tie-order artifacts."
+  },
+  "step5_uncertainty_abstention": {
+    "summary": "See abstention_results.json for full detail.",
+    "ensemble_std_honesty": "ensemble_std is NOT an honest, independent uncertainty measure. It is a near-deterministic function of the mean prediction itself (both models tend to agree at the extremes -- very low or very high suitability -- and disagree in the middle), which is exactly the behavior of two correlated point estimates rather than a calibrated Bayesian or bootstrap ensemble. The two models differ only in their choice of PU background (target-group vs random), not in bootstrap resampling, random seed variation, or architecture diversity, so their spread reflects sensitivity to ONE specific modeling choice (background construction), not the full space of model uncertainty. It should be read as \"how much does the effort-bias correction matter for this cell\", not \"how confident is the model\".",
+    "mahalanobis_honesty": "Mahalanobis distance from the positive centroid is strongly anti-correlated with predicted suitability (rho=-0.62): cells that look feature-similar to known positives are BOTH scored highly suitable AND close in Mahalanobis distance almost by construction, since a tree ensemble trained to separate positives from background implicitly learns a similar notion of \"distance from positive region\". A pure environmental-feature OOD flag is therefore largely redundant with the suitability score itself and cannot serve as an independent second axis of confidence on its own.",
+    "policy_category_counts": {
+      "low_suitability_no_action": 597570,
+      "high_suitability_low_uncertainty_DIRECT_PRIORITY": 1162,
+      "high_suitability_high_uncertainty_EXPERT_REVIEW": 394
+    },
+    "key_finding": "Both readily-available uncertainty signals (two-model ensemble_std and feature-space Mahalanobis distance from the positive centroid) are near-collapsed onto the suitability score itself (Spearman rho about -0.62 to +0.88 with suitability/mean, not independent) and cannot serve as an honest confidence axis alone. Adding local survey-effort density as a genuinely weaker-correlated second axis (rho=-0.12 with suitability) yields an operational 3-way policy: 1162 cells direct-priority, 394 cells expert-review, 597570 cells no-action."
+  },
+  "limitations": [
+    "Zero verified_negative labels exist anywhere in this project; every AUC/AP/precision/calibration number in this validation compares presence against pseudo-background (target-group), never against confirmed absence -- all reported metrics are optimistic relative to a true presence/absence gold standard.",
+    "Positive counts in several strata are small (holdout oblasts: Chernivtsi n_pos=6, Sumy n_pos=3; temporal per-cutoff test sets: 49-112 positives) -- per-stratum AUC/AP in Steps 1, 2 and 3 carry wide sampling uncertainty and the pooled/aggregate comparisons are the more reliable evidence.",
+    "The spatial-block CV block size (100km) and buffer (50km) were chosen from a documented ~50km climate spatial-support prior plus a semivariogram sanity check, not from a single unambiguous autocorrelation range -- the variogram showed a shallow, non-monotonic structure, so this choice is a defensible but not uniquely determined design decision.",
+    "Temporal analysis (Step 2) uses first-detection year as a proxy for true colonization year, which is confounded with survey effort per prior-phase findings (patch_dynamics growth_rate is 72-94% explained by record-count growth, not biology) -- the temporal train/test split reflects detection dynamics, not necessarily species range dynamics.",
+    "Mahalanobis OOD distance and ensemble_std, the two most readily available \"uncertainty\" quantities in this project, are NOT statistically independent of the suitability prediction itself and should not be reported to stakeholders as calibrated confidence intervals; the abstention policy in Step 5 works around this by adding an independent evidence-density signal, but this is a partial fix, not a proper predictive-uncertainty quantification (no bootstrap/Bayesian ensemble was built in this project).",
+    "Elkan-Noto PU calibration (c_hat) was estimated by 5-fold OOF on TRAINING positives in the original Phase III branch; this validation branch did not re-estimate c_hat per CV scheme, so absolute calibrated-probability values in Step 4 inherit that training-time estimate and may not transfer exactly to the specific holdout population being scored.",
+    "All climate-derived features retain the ~50km MERRA-2 spatial support and WorldClim/terrain retain ~3-4.6km support documented in prior phases; this caveat propagates unchanged into every validation scheme that includes these features."
+  ],
+  "notes_for_next_phase": "This validation branch confirms the Phase III target-group-background model (AUC=0.968, AP=0.605-0.613 depending on retraining seed) as the methodologically defensible headline number, NOT the random-split number (AUC=0.982, AP=0.671) which should never be quoted in the final report. For the field-batch-selection phase: use the raw (uncalibrated) suitability score for ranking, apply the Step-4 budget-derived threshold rather than an F1-optimal one, and route the Step-5 \"expert_review\" category (394 cells, high suitability + low local survey-effort density) to a distinct review queue rather than merging it into the main priority-visit list."
+}

@@ -1,0 +1,32 @@
+{
+  "method": "Rayleigh test for uniformity of circular data (Zar 1999 approximation) on azimuths from nearest prior-year positive patch centroid to each 'new'-status patch centroid in patch_dynamics.parquet",
+  "full_sample": {
+    "n": 503.0,
+    "R": 0.07237313545013047,
+    "z": 2.6346489796461143,
+    "p_value": 0.07168442387327614,
+    "mean_direction_deg": 26.76986329360006
+  },
+  "local_lt_20km_subsample": {
+    "n": 288.0,
+    "R": 0.061617662099571646,
+    "z": 1.0934600493936926,
+    "p_value": 0.3353441167240627,
+    "mean_direction_deg": 351.3659411210599
+  },
+  "local_lt_5km_subsample": {
+    "n": 125.0,
+    "R": 0.10860582555403332,
+    "z": 1.4744031680341398,
+    "p_value": 0.22927267140970733,
+    "mean_direction_deg": 6.557274672498565
+  },
+  "azimuth_minus_downwind_direction": {
+    "n": 457.0,
+    "R": 0.07659248754131998,
+    "z": 2.6809489805296356,
+    "p_value": 0.06842958102417893,
+    "mean_direction_deg": 296.04700534531383
+  },
+  "honest_conclusion": "None of the Rayleigh tests reject the null hypothesis of uniform circular direction at alpha=0.05 (full sample p=0.072, n=503; <20km subsample p=0.335, n=288; <5km subsample p=0.229, n=125; azimuth-vs-downwind alignment test p=0.068, n=457). This is an EXPECTED negative result, not a modeling failure: as previously established, the median centroid shift between matched patches across years (342 m) is smaller than the DBSCAN clustering epsilon (500 m) used to define patches — so most 'new' patch events are very likely re-detections / cluster-boundary noise from varying observation effort and clustering granularity rather than genuine spatial spread events. Any apparent directional pattern in the raw azimuth histogram is not statistically distinguishable from random. We do NOT claim wind-driven or river-driven directional spread is disproven by this — only that it is NOT detectable from the current patch-dynamics dataset at its current spatial/temporal resolution."
+}

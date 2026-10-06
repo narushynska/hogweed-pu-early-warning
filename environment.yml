@@ -1,0 +1,43 @@
+# environment.yml — hogweed
+# Відтворити: mamba env create -f environment.yml && conda activate hogweed
+#
+# NOTE: exact build strings are not pinned; версії
+# нижче зафіксовані під час виконання проєкту (див. README.md, розділ "Середовище").
+# Якщо точна версія недоступна на conda-forge, встановлюйте найближчу сумісну (>=) —
+# API, використані в коді, стабільні для geopandas>=1.0, shapely>=2.1, pandas>=2.2.
+name: hogweed
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - geopandas=1.1.4
+  - rasterio=1.5.1
+  - rioxarray
+  - shapely=2.1.2          # shapely.concave_hull — НЕ alphashape (зламаний пакет, не імпортувати)
+  - pyproj
+  - scikit-learn=1.9
+  - hdbscan
+  - pygam
+  - networkx
+  - lightgbm
+  - shap
+  - libpysal
+  - esda
+  - pandas=3.0.5
+  - numpy=2.5.2
+  - pyarrow
+  - matplotlib
+  - seaborn
+  - requests
+  - pip
+  - pip:
+      # GBIF client: НЕ pygbif. 01_data/01_gbif_extraction.py використовує внутрішній
+      # common/gbif_client.py (тонка обгортка над requests навколо api.gbif.org/v1/),
+      # включений до цього архіву. Додаткова pip-залежність для нього не потрібна.
+
+# Мережеві джерела даних, дозволені для цього пайплайну (allowlist):
+#   api.gbif.org           — occurrence records (Heracleum, Apiaceae, Plantae)
+#   geodata.ucdavis.edu     — WorldClim v2 (bioclim, tavg/prec/tmin/wind normals)
+#   data.hydrosheds.org     — HydroRIVERS (річкова мережа)
+#   naciscdn.org            — Natural Earth (адмінкордони, дороги, залізниці, населені пункти)
+#   power.larc.nasa.gov     — NASA POWER/MERRA-2 (щоденний кліматичний ряд, замінник Open-Meteo ERA5)

@@ -1,0 +1,57 @@
+{
+  "validation_scheme": "20% oblast-block holdout (own split; suitability-branch split not yet available at time of this run) — holdout oblasts: Chernihiv, Kherson, Kirovohrad, Kyiv, Mykolaiv",
+  "n_train": 16087,
+  "n_holdout": 4491,
+  "holdout_positive_rate": 0.013805388554887553,
+  "kernel_bandwidth_km_propagule_pressure": 20.0,
+  "mechanistic_kernel_distance_scale_m": 20000.0,
+  "models": {
+    "1_ml_only_no_wind": {
+      "description": "LightGBM on spatial/climate/terrain/effort features, excludes any wind variable",
+      "features": [
+        "bio_01",
+        "bio_04",
+        "bio_05",
+        "bio_06",
+        "bio_12",
+        "bio_15",
+        "bio_16",
+        "bio_17",
+        "gdd_base5_mean_2015_2024",
+        "frost_days_mean_2015_2024",
+        "annual_precip_mean_2015_2024",
+        "tmean_annual_mean_2015_2024",
+        "elevation_m",
+        "slope_deg",
+        "roughness_m",
+        "tpi_m",
+        "dist_river_m",
+        "dist_road_m",
+        "dist_railroad_m",
+        "dist_settlement_m",
+        "n_apiaceae_bg_r5km",
+        "n_plant_effort_r5km",
+        "n_hard_negative_r5km",
+        "n_apiaceae_bg_r10km",
+        "n_plant_effort_r10km"
+      ],
+      "AUC": 0.9652819758337642,
+      "AP": 0.34260974658839166,
+      "log_loss": 0.06601943933860761
+    },
+    "2_mechanistic_only": {
+      "description": "1D logistic calibration of log(anisotropic negative-exponential dispersal kernel score) summed over all 544 patch sources",
+      "kernel_formula": "score = sum_over_sources[ exp(-dist_m/20000) * (1 + wind_constancy*wind_mag_norm*cos(bearing - downwind_direction)) ]",
+      "AUC": 0.9500688278865833,
+      "AP": 0.29610210274460796,
+      "log_loss": 0.046058355554553045
+    },
+    "3_hybrid_ml_plus_mech_feature": {
+      "description": "Same LightGBM as model 1, plus log(mechanistic dispersal score) added as one extra feature",
+      "AUC": 0.9712233883713647,
+      "AP": 0.33887158066611045,
+      "log_loss": 0.07794511245596539
+    }
+  },
+  "finding": "Hybrid model has the best AUC (AUC=0.971) vs ML-only (AUC=0.965) and pure mechanistic (AUC=0.950), but on Average Precision the ML-only model is marginally best (AP=0.343) vs hybrid (AP=0.339) and mechanistic (AP=0.296) — the three models are close and none dominates on both metrics. The wind-kernel feature adds at most a small, non-decisive increment to discrimination — consistent with the low median wind_constancy (0.269) meaning wind direction alone carries limited standalone predictive signal in Ukraine; most separability across all three models comes from static climate/terrain/effort features (which also encode observer-effort confounding, see limitations)."
+}

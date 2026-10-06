@@ -1,0 +1,106 @@
+{
+  "holdout": {
+    "n_cells": 113204,
+    "n_positive": 220,
+    "prevalence": 0.0019433942263524257
+  },
+  "ranking_note": "Ranking uses suitability_targetbg_raw (uncalibrated PU score) as the primary sort key. The Elkan-Noto CALIBRATED score (suitability_targetbg) saturates to exactly 1.0 for 2857/113204 (2.5%) of holdout cells -- more cells than K=200 and comparable to K=500 -- so ranking on the calibrated score alone makes top-K selection depend on arbitrary tie-break/row order. The raw score has no ties at 1.0 and gives an honest, reproducible top-K ranking; calibration should inform DECISION THRESHOLDS (is this probability high enough to act), ranking for a fixed-K budget should use the uncalibrated, un-saturated score.",
+  "precision_recall_at_k": {
+    "K200": {
+      "precision": 0.01,
+      "recall": 0.00909090909090909,
+      "n_found": 2,
+      "n_positive_total": 220
+    },
+    "K500": {
+      "precision": 0.018,
+      "recall": 0.04090909090909091,
+      "n_found": 9,
+      "n_positive_total": 220
+    }
+  },
+  "enrichment_over_base_rate": {
+    "K200": 5.145636363636363,
+    "K500": 9.262145454545454
+  },
+  "pr_curve_ap": 0.04673189808560438,
+  "accuracy_trap": {
+    "trivial_all_negative_accuracy": 0.9980566057736475,
+    "precision_at_200": 0.01,
+    "precision_at_500": 0.018,
+    "interpretation": "A classifier that predicts \"no Heracleum\" everywhere scores 99.81% accuracy on this holdout purely because positives are 0.194% of cells -- this number is meaningless for prioritizing field visits and must never be reported as model quality. Precision@K (what fraction of a real, budget-sized visit list actually finds the species) is the metric that reflects field utility, even though its absolute value (1.0-1.8%) looks unimpressive next to 99.8% accuracy -- it is a 5-9x enrichment over blind random visits, which is the correct comparison."
+  },
+  "threshold_selection": {
+    "method": "Threshold set at the RAW suitability score of the 500th-ranked holdout cell (budget = 500 field visits per season, a parameter the user supplies, not derived from any F1/Youden optimum).",
+    "threshold_raw_score": 0.9880356683038164,
+    "n_cells_above_threshold_nationally": 1556,
+    "pct_of_national_grid_above_threshold": 0.2597116466319272,
+    "rationale": "Maximizing F1 or another accuracy-style statistic is meaningless under 0.19% prevalence and PU labels with zero verified negatives (F1 optimum is driven almost entirely by the arbitrary unknown-as-negative assumption). The only threshold that has an operational meaning here is one tied to the field service's actual visit capacity: rank all cells by predicted suitability and take exactly as many as the service can survey in a season. This makes the threshold a property of the BUDGET (500 in this run), not of the model -- doubling next season's budget to 1000 should widen the threshold rather than re-fit or re-tune the model."
+  },
+  "calibration": {
+    "method": "Reliability diagram computed on the presence + target-group-background pool restricted to the spatial holdout (n=3009, the same population the model AP is measured on), binned into deciles of predicted suitability_targetbg (Elkan-Noto calibrated).",
+    "bins": [
+      {
+        "bin": "(-0.0009904, 0.000108]",
+        "mean_pred": 7.030931185164171e-05,
+        "observed_rate": 0.0,
+        "n": 301
+      },
+      {
+        "bin": "(0.000108, 0.000179]",
+        "mean_pred": 0.0001409589535281157,
+        "observed_rate": 0.0,
+        "n": 301
+      },
+      {
+        "bin": "(0.000179, 0.000256]",
+        "mean_pred": 0.00021712532516425414,
+        "observed_rate": 0.0,
+        "n": 301
+      },
+      {
+        "bin": "(0.000256, 0.000353]",
+        "mean_pred": 0.00030072744204640494,
+        "observed_rate": 0.0,
+        "n": 301
+      },
+      {
+        "bin": "(0.000353, 0.000497]",
+        "mean_pred": 0.00042156822708326526,
+        "observed_rate": 0.0,
+        "n": 301
+      },
+      {
+        "bin": "(0.000497, 0.000749]",
+        "mean_pred": 0.000612613206319184,
+        "observed_rate": 0.0,
+        "n": 300
+      },
+      {
+        "bin": "(0.000749, 0.00124]",
+        "mean_pred": 0.0009680197806759713,
+        "observed_rate": 0.0,
+        "n": 301
+      },
+      {
+        "bin": "(0.00124, 0.00289]",
+        "mean_pred": 0.0018068224980946088,
+        "observed_rate": 0.0,
+        "n": 301
+      },
+      {
+        "bin": "(0.00289, 0.729]",
+        "mean_pred": 0.224133120822994,
+        "observed_rate": 0.17940199335548174,
+        "n": 301
+      },
+      {
+        "bin": "(0.729, 1.0]",
+        "mean_pred": 0.9614247339839395,
+        "observed_rate": 0.5514950166112956,
+        "n": 301
+      }
+    ],
+    "interpretation": "The model is under-confident relative to its own training-population calibration target at the high end: the top decile has mean predicted suitability 0.96 but only 55% observed presence rate within that decile (and c_hat=0.7256 was estimated by 5-fold OOF calibration on TRAINING positives, not on this held-out oblast set, so some further drop on holdout is expected). Because label_state==positive is a PU label with zero verified negatives, \"observed rate\" here is itself a lower bound on true presence probability -- the true calibration curve likely sits above the one plotted, but by an unknown amount. Reliability diagrams under a PU regime with structurally incomplete positive labels cannot be read as absolute probability calibration; they are only useful for comparing relative rank-ordering of confidence bins, which the monotonic increase here does confirm."
+  }
+}

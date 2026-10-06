@@ -1,0 +1,85 @@
+{
+ "task": "Phase V field batch selection (500 points, slide 31 exploit/uncertainty/exploration scheme)",
+ "source_artifacts": {},
+ "exclusions_applied": {
+  "confirmed_positives_excluded": 597,
+  "expert_review_cells_excluded_from_main_batch": 394
+ },
+ "decision_threshold_raw_score": 0.9880356683038164,
+ "threshold_source": "Same raw-score threshold as field-budget cutoff (rank-500 among 7-oblast spatial holdout), reused verbatim from abstention_results.json / budget_metrics_results.json",
+ "categories": {
+  "exploit": {
+   "n": 250,
+   "pct": 50,
+   "method": "Top-250 by raw suitability score (suitability_targetbg_raw), among cells NOT label_state=='positive' AND NOT in the 394-cell EXPERT_REVIEW queue. Ties broken by rank order; next-ranked cell substituted for any EXPERT_REVIEW cell removed.",
+   "min_raw_score_in_selection": 0.9936414524996758,
+   "max_raw_score_in_selection": 0.9970721761991638
+  },
+  "uncertainty_diversity": {
+   "n": 150,
+   "pct": 30,
+   "method": "Candidate pool = cells within +/-0.10 raw-score band of the decision threshold (0.988), excluding cells already selected for exploit, EXPERT_REVIEW cells, and confirmed positives (4526 candidates in band [0.8880, 0.9936]). Geographic + habitat diversification via greedy farthest-point sampling (FPS) on projected EPSG:3035 (x,y) coordinates, seeded at the candidate closest to the threshold, with a hard minimum inter-point distance constraint of 15 km enforced during selection.",
+   "band_width_raw_score": 0.1,
+   "min_distance_target_km": 15,
+   "achieved_min_pairwise_distance_km": 15.297058540778355,
+   "n_oblasts_covered": 17
+  },
+  "exploration": {
+   "n": 100,
+   "pct": 20,
+   "method": "Candidate pool = cells with label_state != 'positive', action_category == low_suitability_no_action, and raw suitability strictly below the lower edge of the uncertainty band (< 0.8880), i.e. clearly low-suitability. Per-oblast quota allocated inversely proportional to the oblast's median n_plant_effort_r10km (+5 smoothing constant), capped at 1-12 points/oblast, covering all accessible oblasts (Crimea and Sevastopol excluded as inaccessible for field visits). Within each oblast, cells sampled without replacement with probability inversely proportional to local n_plant_effort_r10km (+1 smoothing), subject to an 8 km minimum spacing constraint against already-chosen points in that oblast.",
+   "min_distance_target_km_within_oblast": 8,
+   "n_oblasts_covered": 25,
+   "random_seed": 7
+  }
+ },
+ "expert_review_queue": {
+  "n": 394,
+  "definition": "action_category == high_suitability_high_uncertainty_EXPERT_REVIEW from abstention_results.json policy: high_suitability (raw >= 0.988) AND (env_OOD via Mahalanobis > 95th pct of known-positive distances, OR low local survey effort via n_plant_effort_r25km <= 25th pct nationally).",
+  "breakdown": {
+   "env_ood_only": 3,
+   "low_evidence_only": 391,
+   "both_flags": 0
+  },
+  "routing": "Separate expert desk-review queue (aerial imagery / local contact / historical record check), NOT part of the 500-point field batch. Confirmed zero overlap with field_batch_500."
+ },
+ "representativeness_summary": {
+  "field_batch_unique_oblasts": 25,
+  "total_oblasts_ukraine": 27,
+  "diversity_stats_by_category": {
+   "exploit": {
+    "n": 250,
+    "n_unique_oblasts": 7,
+    "min_pairwise_dist_km": 1.0,
+    "median_pairwise_dist_km": 231.21634890292682,
+    "min_nn_dist_km": 1.0,
+    "median_nn_dist_km": 1.0
+   },
+   "uncertainty": {
+    "n": 150,
+    "n_unique_oblasts": 17,
+    "min_pairwise_dist_km": 15.297058540778355,
+    "median_pairwise_dist_km": 246.33716731342025,
+    "min_nn_dist_km": 15.297058540778355,
+    "median_nn_dist_km": 19.79898987322333
+   },
+   "exploration": {
+    "n": 100,
+    "n_unique_oblasts": 25,
+    "min_pairwise_dist_km": 9.219544457292889,
+    "median_pairwise_dist_km": 417.1396642057442,
+    "min_nn_dist_km": 9.219544457292889,
+    "median_nn_dist_km": 37.06981781561336
+   }
+  }
+ },
+ "limitations": [
+  "Threshold 0.988 comes from a 7-oblast spatial holdout of 500 budgeted field visits; applying it nationally assumes the holdout's precision/enrichment generalizes to the full country, which Phase IV domain-shift results show is not guaranteed (AUC varies 7.8x more between regions than within).",
+  "n_plant_effort_r10km/r25km are GBIF-derived observation-density proxies, not verified absence of the species -- 'exploration' cells target survey blind spots, not confirmed species-free zones.",
+  "The 15km/8km minimum-spacing constraints are heuristic choices tied to the ecological patch scale used in DBSCAN clustering (eps=500m) scaled up for a country-level survey budget, not derived from a formal spatial design optimization.",
+  "Exploit group is geographically concentrated in Lviv and Khmelnytskyi oblasts (min pairwise distance ~1km) because that is where the model's highest-confidence hotspots actually are -- this is expected and correct behavior for a pure exploitation arm, not a diversity failure.",
+  "Uncertainty-band width (+/-0.10 raw score) was chosen empirically to yield enough candidates for 150 points at >=15km spacing; a narrower band closer to the literal threshold would have produced far fewer geographically independent points.",
+  "Mahalanobis/env-OOD and evidence-density flags for the expert-review queue were reproduced from the abstention_results.json methodology (documented in its lineage) rather than re-derived from first principles; results reproduce the published category counts (1162/394/597570) exactly.",
+  "Crimea and Sevastopol were excluded from the exploration allocation as inaccessible for field visits under current conditions, not because they lack suitable habitat or survey gaps."
+ ]
+}

@@ -1,0 +1,197 @@
+{
+ "branch": "Phase II — climate series (annual, lagged, wind vectors)",
+ "purpose": "Supply annual/lagged climate features and wind-direction vectors that WorldClim 2.1 base (static 1970-2000 normals, no wind direction) structurally cannot provide.",
+ "primary_source": {
+  "name": "NASA POWER (MERRA-2 reanalysis), daily point API",
+  "url": "https://power.larc.nasa.gov/api/temporal/daily/point",
+  "auth": "none (free, keyless)",
+  "community": "AG",
+  "native_resolution_measured": "0.5 deg latitude x 0.625 deg longitude (~50-55 km over Ukraine), confirmed empirically by 0.1-deg transects: identical series returned across 4-6 consecutive 0.1-deg steps in lon and 3-5 in lat",
+  "requested_coordinates": "exactly on native cell centres (measured snap offset = 0.0000 deg)",
+  "period": "2000-01-01 .. 2025-12-31 (9497 days per point, complete, zero -999 fill)",
+  "variables_requested": [
+   "T2M",
+   "T2M_MIN",
+   "T2M_MAX",
+   "PRECTOTCORR",
+   "WS10M_MAX",
+   "WD10M",
+   "EVPTRNS"
+  ],
+  "variable_mapping": {
+   "T2M": "tmean",
+   "T2M_MIN": "tmin",
+   "T2M_MAX": "tmax",
+   "PRECTOTCORR": "precip",
+   "WS10M_MAX": "wind_speed_max",
+   "WD10M": "wind_dir",
+   "EVPTRNS": "et0"
+  },
+  "request_pattern": "1 request per point covering all 7 variables x 26 years; 3 concurrent workers, exponential backoff on 429/5xx, atomic write via os.replace; 299/299 succeeded, 0 failures"
+ },
+ "why_not_open_meteo_era5": {
+  "endpoint": "https://archive-api.open-meteo.com/v1/archive",
+  "blocker": "free-tier request weight = locations x max(1,nvars/10) x max(1,ndays/14); published limits 10000 calls/day, 5000/hour, 600/minute",
+  "measured_cost": {
+   "0.15deg_3538pts_26yr_7vars": "weight 2,399,901 = ~240 days of the daily budget",
+   "0.25deg_1335pts_26yr_7vars": "weight 905,559 = ~91 days",
+   "0.10deg_7797pts_26yr_7vars": "weight 5,288,872 = ~529 days"
+  },
+  "empirical_confirmation": "hourly cap (5000) exhausted after ~5 requests of 100 points x 1 year x 7 vars during sizing probes; HTTP 429 'Minutely/Hourly API request limit exceeded'",
+  "model_availability_finding": "models=era5_land (0.1 deg) returns temperature but NULL for precipitation_sum, wind_direction_10m_dominant and et0_fao_evapotranspiration; only era5_seamless returns all 7, blending ERA5-Land 0.1 deg temperature with ERA5 0.25 deg (~28 km) precipitation/wind. So Open-Meteo could not have delivered 0.1-deg wind direction either.",
+  "decision": "user-approved switch to NASA POWER (~50 km) + WorldClim delta-downscaling scaffold"
+ },
+ "era5_cross_validation_source": {
+  "note": "a real-ERA5 subsample WAS fetched within the free budget, purely to verify the MERRA-2 series",
+  "endpoint": "https://archive-api.open-meteo.com/v1/archive",
+  "models": "era5_seamless",
+  "sample": "25 of the 299 points, 2016-01-01..2025-12-31, 3653 days, all 7 daily variables, 91325 rows"
+ },
+ "coarse_grid": {
+  "points_over_ukraine": 299,
+  "construction": "MERRA-2 native mesh (0.5 x 0.625 deg) over the grid bbox, retained only where the point is nearest-neighbour to >=1 of the 599126 land cells",
+  "bbox_lon": [
+   22.133300072277883,
+   40.156133381391044
+  ],
+  "bbox_lat": [
+   44.3836870460793,
+   52.36407484760094
+  ]
+ },
+ "grid_assignment": {
+  "method": "nearest neighbour in EPSG:3035 (cKDTree)",
+  "cells": 599126,
+  "assign_dist_km": {
+   "median": 20.16,
+   "p95": 30.69,
+   "max": 36.65
+  },
+  "cells_per_point_median": 2467,
+  "WARNING": "information support is ~50 km, NOT 1 km: a median of ~2467 one-km cells share one identical climate value. Never interpret these features as local. Any spatial CV block must be far larger than 50 km or climate features leak across folds."
+ },
+ "derived_feature_formulas": {
+  "gdd_base5": "sum over calendar year of max(0, tmean_day - 5.0) [degC-days]",
+  "gdd_base5_mar_jun": "same, restricted to months 3-6",
+  "frost_days": "count of days with tmin < 0 over the calendar year",
+  "frost_days_spring": "count of days with tmin < 0, months 3-5",
+  "spring_precip": "sum of precip, months 3-5 [mm]",
+  "summer_precip": "sum of precip, months 6-8 [mm]",
+  "rain_30d_preflower": "sum of precip over day-of-year 136..165, i.e. the 30 days before typical H. sosnowskyi flowering ~15 June [mm]",
+  "annual_precip": "sum of precip over calendar year [mm]",
+  "tmean_annual / tmean_spring": "mean of daily tmean over year / months 3-5 [degC]",
+  "et0_annual": "sum of EVPTRNS over calendar year [mm]; ~25% of daily values are legitimately 0 (winter)",
+  "prev_season_<X>": "value of X at the SAME point in year t-1 (groupby point_id, shift(1)). Year 2000 is NaN for every lagged column (299 rows) and MUST NOT be imputed.",
+  "anom_<X>": "X(t) minus the 2000-2025 mean of X at the same point [same units as X]",
+  "anomz_<X>": "(X(t) - point mean) / point std — dimensionless z-score",
+  "prev_season_anom_<X>": "anom_<X> lagged one year"
+ },
+ "wind_vector_method": {
+  "window": "July-September (seed maturation/dispersal window)",
+  "convention": "WD10M is the meteorological direction the wind blows FROM; this convention is PRESERVED unchanged in the outputs. A mechanistic dispersal model must invert it (downwind bearing = dir + 180 mod 360).",
+  "u_component": "mean over window of wind_speed_max * sin(radians(wind_dir))",
+  "v_component": "mean over window of wind_speed_max * cos(radians(wind_dir))",
+  "wind_resultant_dir": "degrees(atan2(u_mean, v_mean)) mod 360 — speed-weighted VECTOR mean, not a mean of angles",
+  "wind_resultant_mag": "hypot(u_mean, v_mean) [km/h]; low value = directionally variable",
+  "wind_sin_mean / wind_cos_mean": "unweighted mean of sin/cos of direction — the sin/cos circular encoding",
+  "wind_constancy": "hypot(sin_mean, cos_mean) in [0,1]; 1 = perfectly steady direction",
+  "wind_constancy_weighted": "wind_resultant_mag / wind_speed_mean",
+  "measured_constancy": {
+   "median": 0.269,
+   "min": 0.002,
+   "max": 0.73
+  }
+ },
+ "circular_encoding_check": {
+  "inputs_deg": [
+   359.0,
+   1.0
+  ],
+  "naive_arithmetic_mean_deg": 180.0,
+  "vector_mean_dir_deg": 0.0,
+  "vector_mean_resultant": 0.999848,
+  "circular_distance_deg": 2.0,
+  "interpretation": "vector mean of 359 and 1 deg = 0 deg (=360) with resultant 0.9998, i.e. the two directions are treated as 2 deg apart; the naive arithmetic mean gives 180 deg, the exact opposite direction. Circular encoding is correct.",
+  "dominant_direction_mode_deg": 243.7
+ },
+ "validation_vs_worldclim": {
+  "tmean_C": {
+   "unit": "degC",
+   "n": 277,
+   "pearson_r": 0.9532,
+   "p_value": 6.25e-145,
+   "spearman_r": 0.9442,
+   "worldclim_1970_2000_mean": 7.88,
+   "power_2000_2025_mean": 9.1,
+   "bias_power_minus_worldclim": 1.213,
+   "mae": 1.219,
+   "rmse": 1.31
+  },
+  "annual_precip_mm": {
+   "unit": "mm",
+   "n": 277,
+   "pearson_r": 0.8735,
+   "p_value": 5.84e-88,
+   "spearman_r": 0.9235,
+   "worldclim_1970_2000_mean": 578.54,
+   "power_2000_2025_mean": 597.14,
+   "bias_power_minus_worldclim": 18.602,
+   "mae": 41.399,
+   "rmse": 63.859
+  }
+ },
+ "validation_vs_real_era5": {
+  "tmean_C": {
+   "n_point_years": 250,
+   "pearson_r": 0.9396,
+   "era5_mean": 10.62,
+   "power_mean": 10.46,
+   "bias_power_minus_era5": -0.163,
+   "mae": 0.619
+  },
+  "annual_precip_mm": {
+   "n_point_years": 250,
+   "pearson_r": 0.8596,
+   "era5_mean": 607.89,
+   "power_mean": 607.77,
+   "bias_power_minus_era5": -0.122,
+   "mae": 97.385
+  },
+  "wind_resultant_dir_deg": {
+   "n_point_years": 250,
+   "median_abs_circular_diff_deg": 10.69,
+   "mean_circular_diff_deg": -12.85
+  }
+ },
+ "worldclim_nodata_handling": {
+  "points_masked": 22,
+  "reason": "22 of 299 coarse points have WorldClim = -9999 (nodata): their ~50 km cell centre falls on water/outside the finer WorldClim land mask. Masked BEFORE computing any correlation (unmasked, r would have been -0.545 for bio_01 — a pure nodata artifact).",
+  "offset_fallback": "those points receive the spatial median delta/ratio, flagged by offset_imputed=True"
+ },
+ "delta_downscaling_scaffold": {
+  "rationale": "user-approved: keep WorldClim's fine spatial detail as the LEVEL and add the POWER annual ANOMALY as the year-to-year variation",
+  "delta_tmean_wc_minus_power": "bio_01 - mean(tmean_annual, 2000-2025), per point [degC]; median -1.139",
+  "ratio_precip_wc_over_power": "bio_12 / mean(annual_precip, 2000-2025), per point [dimensionless]; median 0.9565",
+  "intended_application": "T_cell(year) ~ worldclim_bio01_at_cell + anom_tmean_annual(point, year); P_cell(year) ~ worldclim_bio12_at_cell * (1 + anom_annual_precip/point_mean). The fine detail is a 1970-2000 normal; only the anomaly is year-specific."
+ },
+ "temporal_holdout_note": "Every feature for year t is computed from data dated <= 31 Dec of year t; prev_season_* uses only year t-1. For a forecast made at the start of year t, use ONLY prev_season_* columns — the same-year columns are not yet observable.",
+ "limitations": [
+  "Spatial support is ~50 km (MERRA-2 0.5x0.625 deg), coarser than the 3-4.6 km WorldClim rasters and far coarser than the 1 km grid; a median ~2467 one-km cells share one value.",
+  "Source is MERRA-2 via NASA POWER, NOT ERA5 as originally planned; the free Open-Meteo tier cannot deliver a 26-year multi-point daily series (measured ~240 days of budget at 0.15 deg).",
+  "Cross-validated against real ERA5 on only 25 of 299 points and 10 of 26 years.",
+  "Wind direction at ~50 km cannot resolve valley/terrain channelling that governs real local seed transport.",
+  "wind_speed_max is a DAILY MAXIMUM, so the speed-weighted vector mean is biased toward gust conditions rather than mean transport; arguably appropriate for dispersal but not a mean-wind climatology.",
+  "Flowering date is fixed at ~15 June for all of Ukraine and all years; real phenology shifts with latitude, elevation and year, so rain_30d_preflower is an approximation.",
+  "GDD uses mean-temperature accumulation, not single-sine/double-sine methods; no upper cutoff applied.",
+  "Lagged columns are NaN for year 2000 by construction and must not be imputed.",
+  "22 points lack valid WorldClim values and use a median-imputed downscaling offset (flagged).",
+  "Calendar-year aggregation splits the meteorological winter across two rows."
+ ],
+ "reproducibility": {
+  "crs_metric": "EPSG:3035",
+  "raster_sampling_crs": "EPSG:4326 (native, not reprojected)",
+  "daily_rows": 2839603,
+  "annual_rows": 7774,
+  "seed_for_era5_subsample": 42
+ }
+}

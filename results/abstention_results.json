@@ -1,0 +1,40 @@
+{
+  "ensemble_std_honesty_check": {
+    "method": "Spearman correlation between suitability_targetbg and ensemble_std (targetbg vs randombg model disagreement) across all 599126 grid cells.",
+    "spearman_suitability_vs_ensemble_std": 0.9517253043755828,
+    "conclusion": "ensemble_std is NOT an honest, independent uncertainty measure. It is a near-deterministic function of the mean prediction itself (both models tend to agree at the extremes -- very low or very high suitability -- and disagree in the middle), which is exactly the behavior of two correlated point estimates rather than a calibrated Bayesian or bootstrap ensemble. The two models differ only in their choice of PU background (target-group vs random), not in bootstrap resampling, random seed variation, or architecture diversity, so their spread reflects sensitivity to ONE specific modeling choice (background construction), not the full space of model uncertainty. It should be read as \"how much does the effort-bias correction matter for this cell\", not \"how confident is the model\"."
+  },
+  "mahalanobis_ood_check": {
+    "method": "Mahalanobis distance of each grid cell from the centroid+covariance of the 597 training positives in standardized 72-feature space (feature list matches the suitability model, minus has_upstream_infection_50km; NaN network_distance filled at 9999, NaN slope_deg filled at median).",
+    "spearman_suitability_vs_mahal": -0.6234740574398859,
+    "spearman_ensemble_std_vs_mahal": -0.624464656470493,
+    "conclusion": "Mahalanobis distance from the positive centroid is strongly anti-correlated with predicted suitability (rho=-0.62): cells that look feature-similar to known positives are BOTH scored highly suitable AND close in Mahalanobis distance almost by construction, since a tree ensemble trained to separate positives from background implicitly learns a similar notion of \"distance from positive region\". A pure environmental-feature OOD flag is therefore largely redundant with the suitability score itself and cannot serve as an independent second axis of confidence on its own."
+  },
+  "evidence_density_axis": {
+    "method": "n_plant_effort_r25km (25km-radius count of any plant observation, from the effort-buffer features) used as a proxy for \"how much has this neighborhood actually been surveyed\", independent of the environmental feature space.",
+    "spearman_suitability_vs_effort_r25km": -0.11966247163990312,
+    "spearman_mahal_vs_effort_r25km": -0.21780398039584653,
+    "conclusion": "Local survey-effort density is only weakly correlated with predicted suitability (rho=-0.12) and with the Mahalanobis OOD score (rho=-0.22) -- far more independent than the two model-internal signals above. It is used here as the SECOND, complementary uncertainty axis for the abstention policy: a cell can be high-suitability with genuinely low surrounding survey effort, meaning the model is extrapolating into under-observed territory, something neither ensemble_std nor the Mahalanobis distance (both dominated by the suitability score itself) can flag."
+  },
+  "abstention_policy": {
+    "high_suitability_threshold": 0.9880356683038164,
+    "high_suitability_threshold_source": "Same raw-score threshold as the field-budget cutoff from Step 4 (rank-500 among the 7-oblast spatial holdout).",
+    "env_ood_cutoff_mahalanobis": 10.38227055344707,
+    "env_ood_cutoff_source": "95th percentile of Mahalanobis distance among the 597 known training positives (a cell further from the positive centroid than 95% of known positives is flagged env-OOD).",
+    "low_evidence_density_cutoff_effort_r25km": 75.0,
+    "low_evidence_density_cutoff_source": "25th percentile of n_plant_effort_r25km across the full grid.",
+    "rule": "high_suitability AND NOT(env_OOD OR low_evidence_density) -> DIRECT_PRIORITY; high_suitability AND (env_OOD OR low_evidence_density) -> EXPERT_REVIEW; NOT high_suitability -> NO_ACTION",
+    "category_counts": {
+      "low_suitability_no_action": 597570,
+      "high_suitability_low_uncertainty_DIRECT_PRIORITY": 1162,
+      "high_suitability_high_uncertainty_EXPERT_REVIEW": 394
+    },
+    "high_suitability_breakdown": {
+      "env_ood_only": 3,
+      "low_evidence_only": 391,
+      "both_flags": 0,
+      "neither_flag_direct_priority": 1162
+    }
+  },
+  "interpretation": "Under this policy, 1162 cells nationally get flagged for direct field-visit priority (same rank-500-per-oblast-share order of magnitude as the Step-4 budget analysis extended across all of Ukraine, not just the 7-oblast holdout), while 394 cells are high-suitability but sit in poorly-surveyed neighborhoods -- these should route to expert desk review (aerial imagery, local contact, historical record check) before committing a scarce field visit, since the model has less local evidence backing its suitability call there. This operationalizes the slide-77 point that identical predicted probability can warrant different actions depending on the confidence behind it -- but only once a genuinely independent second signal (evidence density) is added, because the model-internal signals (ensemble_std, Mahalanobis distance) collapse onto the suitability score itself and cannot supply that second axis on their own."
+}
