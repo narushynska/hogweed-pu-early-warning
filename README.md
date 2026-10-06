@@ -83,3 +83,7 @@ manually from the sources above and placed where the scripts expect them:
 
 All intermediate products (gridded feature tables, suitability and risk layers, ~370 MB) are rebuilt by
 the pipeline from these inputs and are therefore not stored here.
+
+## License
+
+The code is released under the MIT License (see `LICENSE`).
