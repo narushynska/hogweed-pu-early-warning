@@ -92,6 +92,6 @@ baseline_results = pd.DataFrame([
     {"model": "1. Nearest-positive\ndistance only", "AUC": auc_nn, "AP": ap_nn},
     {"model": "2. Climate-only\n(2 features)", "AUC": auc_clim, "AP": ap_clim},
     {"model": "3. Infrastructure\n(river+road dist)", "AUC": auc_infra, "AP": ap_infra},
-    {"model": "4. Full PU-LightGBM\n(149 features)", "AUC": 0.9679, "AP": 0.6053},
+    {"model": "4. Full PU-LightGBM\n(73 features)", "AUC": 0.9679, "AP": 0.6053},
 ])
 baseline_results.to_csv("baseline_ladder.csv", index=False)
